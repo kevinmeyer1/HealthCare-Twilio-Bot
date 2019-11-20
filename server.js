@@ -213,14 +213,14 @@ app.post('/sms', function(req, res) {
 
                     res.status(200)
                     res.setHeader('Content-Type', 'text/plain')
-                    res.write(`New number (${number}) has started the study`)
+                    //res.write(`New number (${number}) has started the study`)
                     res.send()
                 } else {
                     //number exists
                     sendMessage("Please enter a number from 0 to 4", number, botNumber)
                     res.status(401)
                     res.setHeader('Content-Type', 'text/plain')
-                    res.write(`Number (${number}) has already started the study`)
+                    //res.write(`Number (${number}) has already started the study`)
                     res.send()
                 }
             }
@@ -229,7 +229,7 @@ app.post('/sms', function(req, res) {
         removeNumber(number)
         res.status(200)
         res.setHeader('Content-Type', 'text/plain')
-        res.write(`Number (${number}) has been removed from the db`)
+        //res.write(`Number (${number}) has been removed from the db`)
         res.send()
     } else {
         //text message is not a start so it must be a number
@@ -250,7 +250,7 @@ app.post('/sms', function(req, res) {
                     sendMessage("Text 'START' to begin the study", number, botNumber)
                     res.status(200)
                     res.setHeader('Content-Type', 'text/plain')
-                    res.write(`Number (${number}) entered values without starting the study`)
+                    //res.write(`Number (${number}) entered values without starting the study`)
                     return res.send()
                 }
 
@@ -262,7 +262,7 @@ app.post('/sms', function(req, res) {
                         sendMessage("Please enter a number from 0 to 4", number, botNumber)
                         res.status(401)
                         res.setHeader('Content-Type', 'text/plain')
-                        res.write(`Number (${number}) responded with a value that is not acceptable`)
+                        //res.write(`Number (${number}) responded with a value that is not acceptable`)
                         return res.send()
                     }
 
@@ -277,14 +277,14 @@ app.post('/sms', function(req, res) {
                             sendMessage("Thank you and see you soon", number, botNumber, function() {
                                 res.status(200)
                                 res.setHeader('Content-Type', 'text/plain')
-                                res.write(`Number (${number}) was given a diagnosis, completed 3rd study`)
+                                //res.write(`Number (${number}) was given a diagnosis, completed 3rd study`)
                                 res.send()
                             })
                         } else {
                             sendMessage("Please indicate your symptom (1)Headache, (2)Dizziness, (3)Nausea, (4)Fatigue, (5)Sadness, (0)None", number, botNumber)
                             res.status(200)
                             res.setHeader('Content-Type', 'text/plain')
-                            res.write(`Number (${number}) was given a diagnosis`)
+                            //res.write(`Number (${number}) was given a diagnosis`)
                             res.send()
                         }
                     })
@@ -296,7 +296,7 @@ app.post('/sms', function(req, res) {
                         sendMessage("Please enter a number from 0 to 5", number, botNumber)
                         res.status(401)
                         res.setHeader('Content-Type', 'text/plain')
-                        res.write(`Number (${number}) responded with a value that is not acceptable`)
+                        //res.write(`Number (${number}) responded with a value that is not acceptable`)
                         return res.send()
                     }
 
@@ -306,7 +306,7 @@ app.post('/sms', function(req, res) {
                                 sendMessage("Thank you and see you soon", number, botNumber, function() {
                                     res.status(200)
                                     res.setHeader('Content-Type', 'text/plain')
-                                    res.write(`Number (${number}) was given a diagnosis, completed 3rd study`)
+                                    //res.write(`Number (${number}) was given a diagnosis, completed 3rd study`)
                                     res.send()
                                     return
                                 })
@@ -316,7 +316,7 @@ app.post('/sms', function(req, res) {
                                     sendMessage("Please indicate your symptom (1)Headache, (2)Dizziness, (3)Nausea, (4)Fatigue, (5)Sadness, (0)None", number, botNumber, function() {
                                         res.status(200)
                                         res.setHeader('Content-Type', 'text/plain')
-                                        res.write(`Number (${number}) responded that they had no issues - next`)
+                                        //res.write(`Number (${number}) responded that they had no issues - next`)
                                         res.send()
                                     })
                                 })
@@ -333,7 +333,7 @@ app.post('/sms', function(req, res) {
 
                         res.status(200)
                         res.setHeader('Content-Type', 'text/plain')
-                        res.write(`Number (${number}) to first question, second sent`)
+                        //res.write(`Number (${number}) to first question, second sent`)
                         res.send()
                     }
                 }
