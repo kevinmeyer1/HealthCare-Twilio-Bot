@@ -15,8 +15,13 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.post('/sms', function(req, res) {
     console.log('---------------MESSAGE RECEIVED-----------------')
 
-    console.log("text body: " + req.body.Body)
-    console.log("text from: " + req.body.From)
+    client.messages.create({
+        body: "this is a message",
+        to: req.body.From,
+        from: req.body.To
+    }).then( function(message) {
+        console.log(message)
+    })
 })
 
 app.listen(PORT, () => {
