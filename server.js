@@ -14,7 +14,11 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.post('/sms', function(req, res) {
     console.log('---------------MESSAGE RECEIVED-----------------')
 
-    console.log(req.body)
+    console.log("request: " + req.body)
+
+    console.log("request: " + req.body.Body)
+
+    console.log("request: " + req.body[0]['Body'])
 })
 
 app.listen(PORT, () => {
