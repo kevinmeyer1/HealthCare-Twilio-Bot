@@ -34,7 +34,10 @@ function addNumber(number, callback) {
     var params = {
       TableName: 'Messages',
       Item: {
-        'number' : {S: number}
+        'number' : {S: number},
+        'partOne': {S: 'true'},
+        'count': {S: '0'},
+        'valueCount': {S: '0'}
       }
     };
 
@@ -47,7 +50,7 @@ function addNumber(number, callback) {
     });
 }
 
-function increaseTimes(number, callback) {
+function increaseTimes(number, isZero, callback) {
     var params = {
         TableName: 'Messages',
         Key: {
@@ -63,15 +66,47 @@ function increaseTimes(number, callback) {
             var count = Number(countString)
             count += 1
 
+            var countParams = {}
+
             if (count == 3) {
                 return callback(true)
             }
 
-            var countParams = {
-                TableName: 'Messages',
-                Item: {
-                  'number' : {S: number},
-                  'count': {S: count.toString()}
+            if (JSON.stringify(data).includes('values')) {
+                value = data.Item['values']['S']
+                valueCount = data.Item['valueCount']['S']
+
+                if (!isZero) {
+                    valueCount = Number(valueCount)
+                    valueCount += 1
+                }
+
+                countParams = {
+                    TableName: 'Messages',
+                    Item: {
+                      'number' : {S: number},
+                      'count': {S: count.toString()},
+                      'values': {S: value},
+                      'partOne': {S: 'true'},
+                      'valueCount': {S: valueCount.toString()}
+                    }
+                }
+            } else {
+                valueCount = data.Item['valueCount']['S']
+
+                if (!isZero) {
+                    valueCount = Number(valueCount)
+                    valueCount += 1
+                }
+
+                countParams = {
+                    TableName: 'Messages',
+                    Item: {
+                      'number' : {S: number},
+                      'count': {S: count.toString()},
+                      'partOne': {S: 'true'},
+                      'valueCount': {S: valueCount.toString()}
+                    }
                 }
             }
 
@@ -83,11 +118,19 @@ function increaseTimes(number, callback) {
               }
           });
         } else {
+            var value = data.Item['values']['S']
+            var valueCount = data.Item['valueCount']['S']
+
+            console.log('value: ' + value)
+
             var countParams = {
               TableName: 'Messages',
               Item: {
                 'number' : {S: number},
-                'count': {S: '1'}
+                'count': {S: '1'},
+                'values': {S: value},
+                'partOne': {S: 'true'},
+                'valueCount': {S: valueCount.toString()}
               }
             }
 
@@ -102,53 +145,43 @@ function increaseTimes(number, callback) {
     })
 }
 
-function addFirstValue(number, value, callback) {
+function addValue(number, value, callback) {
     var params = {
         TableName: 'Messages',
         Key: {
-            'number': {
-                S: number
-            }
+            'number': {S: number}
         }
     };
 
     ddb.getItem(params, function(err, data) {
-        if (JSON.stringify(data).includes("count")) {
-            var count = data.Item['count']['S']
+        console.log(data)
 
-            var addParams = {
-              TableName: 'Messages',
-              Item: {
-                'number' : {S: number},
-                'firstValue': {S: value},
-                'count': {S: count}
-              }
-            };
+        if (JSON.stringify(data).includes("values")) {
+            var values = data.Item['values']['S']
+            value = values.concat(',', value)
+        }
 
-            ddb.putItem(addParams, function(err, data) {
-                if (err) {
-                  console.log("Error", err);
-                } else {
-                  callback()
-                }
-            });
-        } else {
-          var addParams = {
+        var currentCount = data.Item['count']['S'];
+        var valueCount = data.Item['valueCount']['S']
+
+        var addParams = {
             TableName: 'Messages',
             Item: {
-              'number' : {S: number},
-              'firstValue': {S: value}
+                'number': {S: number},
+                'values': {S: value},
+                'partOne': {S: 'false'},
+                'count': {S: currentCount},
+                'valueCount': {S: valueCount.toString()}
             }
-          };
+        };
 
-          ddb.putItem(addParams, function(err, data) {
-              if (err) {
+        ddb.putItem(addParams, function(err, data) {
+            if (err) {
                 console.log("Error", err);
-              } else {
+            } else {
                 callback()
-              }
-          });
-        }
+            }
+        });
     })
 }
 
@@ -184,7 +217,7 @@ app.post('/sms', function(req, res) {
     var botNumber = req.body.To
     var text = req.body.Body
 
-    var symptoms = ["", "Headache", "Dizziness", "Nausea", "Fatigue", "Sadness"]
+    var symptoms = ["Headache", "Dizziness", "Nausea", "Fatigue", "Sadness"]
 
     if (text == "START") {
         //check for number
@@ -254,9 +287,10 @@ app.post('/sms', function(req, res) {
                     return res.send()
                 }
 
-                if (JSON.stringify(data).includes("firstValue")) {
+                if (data.Item['partOne']['S'] == 'false') {
                     //the first item is in the string so they are responding to the second question
                     var acceptedValues = ['0', '1', '2', '3', '4']
+                    var currentCount = data.Item['count']['S']
 
                     if (!acceptedValues.includes(text)) {
                         sendMessage("Please enter a number from 0 to 4", number, botNumber)
@@ -266,34 +300,107 @@ app.post('/sms', function(req, res) {
                         return res.send()
                     }
 
-                    var firstValue = data.Item['firstValue']['S']
-                    var numFirstValue = Number(firstValue)
-                    var firstSymptom = symptoms[numFirstValue]
+                    var values = data.Item['values']['S']
+                    var valuesArray = values.split(',')
+                    var valueCount = data.Item['valueCount']['S']
+                    var currentValue = valuesArray[valueCount]
 
-                    sendDiagnosis(text, number, botNumber, firstSymptom)
 
-                    increaseTimes(number, function(hitThree) {
-                        if (hitThree == true) {
-                            sendMessage("Thank you and see you soon", number, botNumber, function() {
+                    console.log("currentValue: " + currentValue)
+                    console.log("values: " + valuesArray)
+
+                    sendDiagnosis(text, number, botNumber, currentValue)
+
+                    if (text == '0') {
+                        increaseTimes(number, true, function(hitThree) {
+                            if (hitThree == true) {
+                                sendMessage("Thank you and see you soon", number, botNumber, function() {
+                                    res.status(200)
+                                    res.setHeader('Content-Type', 'text/plain')
+                                    //res.write(`Number (${number}) was given a diagnosis, completed 3rd study`)
+                                    res.send()
+                                })
+                            } else {
+                                var messageString = "Please indicate your symptom "
+                                var newValues = symptoms
+
+                                valuesArray.forEach( function(value) {
+                                    newValues.splice(newValues.indexOf(value), 1);
+                                })
+                                console.log(newValues)
+
+                                for (var i = 0; i < newValues.length; i++) {
+                                    messageString = messageString.concat(`(${i+1})${newValues[i]} `)
+                                }
+
+                                messageString = messageString.concat('(0)None')
+                                console.log(messageString)
+
+                                sendMessage(messageString, number, botNumber)
                                 res.status(200)
                                 res.setHeader('Content-Type', 'text/plain')
-                                //res.write(`Number (${number}) was given a diagnosis, completed 3rd study`)
+                                //res.write(`Number (${number}) was given a diagnosis`)
                                 res.send()
-                            })
-                        } else {
-                            sendMessage("Please indicate your symptom (1)Headache, (2)Dizziness, (3)Nausea, (4)Fatigue, (5)Sadness, (0)None", number, botNumber)
-                            res.status(200)
-                            res.setHeader('Content-Type', 'text/plain')
-                            //res.write(`Number (${number}) was given a diagnosis`)
-                            res.send()
-                        }
-                    })
+                            }
+                        })
+                    } else {
+                        increaseTimes(number, false, function(hitThree) {
+                            if (hitThree == true) {
+                                sendMessage("Thank you and see you soon", number, botNumber, function() {
+                                    res.status(200)
+                                    res.setHeader('Content-Type', 'text/plain')
+                                    //res.write(`Number (${number}) was given a diagnosis, completed 3rd study`)
+                                    res.send()
+                                })
+                            } else {
+                                var messageString = "Please indicate your symptom "
+                                var newValues = symptoms
+
+                                valuesArray.forEach( function(value) {
+                                    newValues.splice(newValues.indexOf(value), 1);
+                                })
+                                console.log(newValues)
+
+                                for (var i = 0; i < newValues.length; i++) {
+                                    messageString = messageString.concat(`(${i+1})${newValues[i]} `)
+                                }
+
+                                messageString = messageString.concat('(0)None')
+                                console.log(messageString)
+
+                                sendMessage(messageString, number, botNumber)
+                                res.status(200)
+                                res.setHeader('Content-Type', 'text/plain')
+                                //res.write(`Number (${number}) was given a diagnosis`)
+                                res.send()
+                            }
+                        })
+                    }
                 } else {
                     //first value is not in the string so they are responding to the first question
-                    var acceptedValues = ['0', '1', '2', '3', '4', '5']
+                    var newValues = symptoms
+
+                    if (JSON.stringify(data).includes('values')) {
+                        var values = data.Item['values']['S']
+                        var valuesArray = values.split(',')
+                        newValues = symptoms
+
+                        valuesArray.forEach( function(value) {
+                            newValues.splice(newValues.indexOf(value), 1);
+                        })
+                        console.log(newValues)
+                    }
+
+                    var acceptedValues = []
+
+                    for (var i = 0; i <= newValues.length; i++) {
+                        acceptedValues[i] = `${i}`
+                    }
+
+                    console.log(acceptedValues)
 
                     if (!acceptedValues.includes(text)) {
-                        sendMessage("Please enter a number from 0 to 5", number, botNumber)
+                        sendMessage(`Please enter a number from 0 to ${newValues.length}`, number, botNumber)
                         res.status(401)
                         res.setHeader('Content-Type', 'text/plain')
                         //res.write(`Number (${number}) responded with a value that is not acceptable`)
@@ -301,7 +408,7 @@ app.post('/sms', function(req, res) {
                     }
 
                     if (text == "0") {
-                        increaseTimes(number, function(hitThree) {
+                        increaseTimes(number, true, function(hitThree) {
                             if (hitThree == true) {
                                 sendMessage("Thank you and see you soon", number, botNumber, function() {
                                     res.status(200)
@@ -312,8 +419,30 @@ app.post('/sms', function(req, res) {
                                 })
                                 return;
                             } else {
+                                var messageString = ""
+
+                                if (JSON.stringify(data).includes("values")) {
+                                    var values = data.Item['values']['S']
+                                    var valuesArray = values.split(',')
+                                    messageString = "Please indicate your symptom "
+                                    var newValues = symptoms
+
+                                    valuesArray.forEach( function(value) {
+                                        newValues.splice(newValues.indexOf(value), 1);
+                                    })
+                                    console.log(newValues)
+
+                                    for (var i = 0; i <= newValues.length; i++) {
+                                        messageString = messageString.concat(`(${i+1})${newValues[i]} `)
+                                    }
+
+                                    messageString = messageString.concat('(0)None')
+                                } else {
+                                    messageString = "Please indicate your symptom (1)Headache, (2)Dizziness, (3)Nausea, (4)Fatigue, (5)Sadness, (0)None"
+                                }
+
                                 sendMessage("Thank you and we will check with you later", number, botNumber, function() {
-                                    sendMessage("Please indicate your symptom (1)Headache, (2)Dizziness, (3)Nausea, (4)Fatigue, (5)Sadness, (0)None", number, botNumber, function() {
+                                    sendMessage(messageString, number, botNumber, function() {
                                         res.status(200)
                                         res.setHeader('Content-Type', 'text/plain')
                                         //res.write(`Number (${number}) responded that they had no issues - next`)
@@ -323,13 +452,16 @@ app.post('/sms', function(req, res) {
                             }
                         })
                     } else {
-                        addFirstValue(number, text, function() {
-                            console.log('Added first Item')
+                        var numText = Number(text)
+                        var valueCount = data.Item['valueCount']['S']
+                        valueCount = Number(valueCount)
+                        var value = newValues[numText - 1]
+
+                        addValue(number, value, function() {
+                            console.log(`Added value`)
                         })
 
-                        var firstValue = symptoms[text]
-
-                        sendMessage(`On a scale from 0 (none) to 4 (severe), how would you rate your ${firstValue} in the last 24 hours?`, number, botNumber)
+                        sendMessage(`On a scale from 0 (none) to 4 (severe), how would you rate your ${value} in the last 24 hours?`, number, botNumber)
 
                         res.status(200)
                         res.setHeader('Content-Type', 'text/plain')
