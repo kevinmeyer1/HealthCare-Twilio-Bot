@@ -11,6 +11,8 @@ const PORT = process.env.PORT || 3000
 
 app.post('/sms', function(req, res) {
     console.log('---------------MESSAGE RECEIVED-----------------')
+
+    console.log(req.body)
 })
 
 app.listen(PORT, () => {
