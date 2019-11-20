@@ -9,16 +9,13 @@ const client = require('twilio')(accountSid, authToken);
 
 const PORT = process.env.PORT || 3000
 
+app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: false }))
 
 app.post('/sms', function(req, res) {
     console.log('---------------MESSAGE RECEIVED-----------------')
 
-    console.log("request: " + req.body)
-
     console.log("request: " + req.body.Body)
-
-    console.log("request: " + req.body[0]['Body'])
 })
 
 app.listen(PORT, () => {
